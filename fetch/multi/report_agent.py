@@ -39,12 +39,14 @@ from src.tools.registry import get_report_tool
 
 SEED = os.getenv("REPORT_AGENT_SEED", "imm_report_agent_seed_2026")
 PORT = int(os.getenv("REPORT_AGENT_PORT", "8015"))
+USE_MAILBOX = bool(os.getenv("AGENTVERSE_MAILBOX"))
 
 agent = Agent(
     name="report-agent",
     seed=SEED,
     port=PORT,
     endpoint=[f"http://127.0.0.1:{PORT}/submit"],
+    mailbox=USE_MAILBOX,
 )
 
 
@@ -70,6 +72,7 @@ def _reconstruct_state(raw: dict) -> PipelineState:
 @agent.on_event("startup")
 async def on_startup(ctx: Context) -> None:
     ctx.logger.info(f"ReportAgent started | address={agent.address}")
+    ctx.logger.info(f"Agentverse mailbox: {'enabled' if USE_MAILBOX else 'disabled (set AGENTVERSE_MAILBOX=1 to enable)'}")
 
 
 @agent.on_message(model=ReportRequest, replies={ReportResponse, AgentError})

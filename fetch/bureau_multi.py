@@ -44,12 +44,6 @@ orchestrator = create_orchestrator(
     report_addr=report_agent.address,
 )
 
-# Reuse the existing test client — point it at the orchestrator instead of
-# the monolithic pipeline agent
-from fetch.client_agent import create_client_agent
-
-client_agent = create_client_agent(pipeline_address=orchestrator.address)
-
 bureau = Bureau(
     agents=[
         stage1_agent,
@@ -59,7 +53,6 @@ bureau = Bureau(
         stage4_agent,
         report_agent,
         orchestrator,
-        client_agent,
     ]
 )
 

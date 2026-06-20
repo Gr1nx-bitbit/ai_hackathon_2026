@@ -76,7 +76,9 @@ uv run python demo.py
 
 ### Fetch AI — Multi-Agent Decomposition
 
-Each specialist agent has its own seed and port env var. All default to fixed values so the bureau works out of the box.
+Each specialist agent has its own seed, port, and mailbox key env var. Seeds and ports default to fixed values so the bureau works out of the box without any configuration.
+
+**Seeds and ports**
 
 | Variable | Default port | Agent |
 |---|---|---|
@@ -87,6 +89,26 @@ Each specialist agent has its own seed and port env var. All default to fixed va
 | `STAGE3_BCELL_AGENT_SEED` / `STAGE3_BCELL_AGENT_PORT` | `8013` | Stage 3 — B-cell |
 | `STAGE4_AGENT_SEED` / `STAGE4_AGENT_PORT` | `8014` | Stage 4 — Systems |
 | `REPORT_AGENT_SEED` / `REPORT_AGENT_PORT` | `8015` | Report |
+
+**Agentverse relay**
+
+| Variable | Default | Description |
+|---|---|---|
+| `AGENTVERSE_MAILBOX` | — | Set to any non-empty value (e.g. `1`) to connect all agents to Agentverse's relay on startup. Agents authenticate via their cryptographic identity — no separate mailbox key required. |
+| `AGENTVERSE_KEY` | — | Agentverse API key. Required only for `register_agents.py`. Get it from your account settings at agentverse.ai. |
+
+**Specialist agent addresses — required when running the orchestrator standalone**
+
+When the orchestrator runs as its own process (not via the bureau), it cannot import the specialist agents to read their addresses. Set these to the addresses printed by `uv run python -m fetch.bureau_multi` on first run. Because seeds are deterministic, these addresses never change.
+
+| Variable | Agent |
+|---|---|
+| `STAGE1_AGENT_ADDRESS` | Stage 1 — Structural |
+| `STAGE2_AGENT_ADDRESS` | Stage 2 — HLA |
+| `STAGE3_TCR_AGENT_ADDRESS` | Stage 3 — T-cell |
+| `STAGE3_BCELL_AGENT_ADDRESS` | Stage 3 — B-cell |
+| `STAGE4_AGENT_ADDRESS` | Stage 4 — Systems |
+| `REPORT_AGENT_ADDRESS` | Report |
 
 ### Real Tools
 
@@ -251,9 +273,9 @@ uv run python demo.py
 
 ---
 
-## Running the Fetch AI Bureau (Local Agent-to-Agent Test)
+## Running the Fetch AI Bureau
 
-There are two bureau modes. Both use the same `PipelineRequest` / `PipelineResponse` message contract and the same test client.
+There are two bureau modes. Both use the same `PipelineRequest` / `PipelineResponse` message contract.
 
 ### Monolithic bureau
 
@@ -265,15 +287,57 @@ uv run python -m fetch.bureau
 
 ### Multi-agent bureau
 
-Seven specialist agents connected via an orchestrator. Each stage is an independent agent.
+Seven specialist agents connected via an orchestrator. Each stage is an independent agent. The bureau starts all agents and waits — no requests are sent automatically.
 
 ```bash
 uv run python -m fetch.bureau_multi
 ```
 
-Expected output for both: all agents start, the client sends four requests on startup, and the orchestrator (or pipeline agent) logs a recommendation and risk score for each.
+On startup the orchestrator logs every specialist agent's address. Copy these — you need them to send requests via `fetch/demo_client.py`.
 
-> **Note:** Without `AGENT_MAILBOX_KEY` set, uagents will print SSL/gRPC warnings when attempting Almanac registration. This is expected — agents still communicate locally via Bureau. You can safely ignore these.
+> **Note:** Without `AGENTVERSE_MAILBOX=1` set, uagents will print SSL/gRPC warnings when attempting Almanac registration. This is expected — agents still communicate locally via Bureau. You can safely ignore these.
+
+---
+
+## Interacting with the Multi-Agent Bureau
+
+Use `fetch/demo_client.py` in a second terminal to send requests while the bureau is running.
+
+### Full pipeline via the orchestrator
+
+```bash
+# Terminal 1 — agents online
+export AGENTVERSE_MAILBOX=1          # omit for local-only
+uv run python -m fetch.bureau_multi
+
+# Terminal 2 — send a full pipeline request
+export ORCHESTRATOR_AGENT_ADDRESS=agent1q...   # from Terminal 1 startup log
+uv run python -m fetch.demo_client --target orchestrator --scenario high_risk
+```
+
+Available scenarios: `high_risk`, `early_exit`, `systems_failure`, `all_clear`.
+
+### Calling an individual stage directly
+
+Any stage can be called in isolation — the demo client provides realistic mock data for upstream inputs automatically.
+
+```bash
+# HLA binding only (no structural prediction needed)
+export STAGE2_AGENT_ADDRESS=agent1q...
+uv run python -m fetch.demo_client --target stage2 --scenario high_risk
+
+# T-cell reactivity only
+export STAGE3_TCR_AGENT_ADDRESS=agent1q...
+uv run python -m fetch.demo_client --target stage3-tcr
+
+# Systems dynamics only
+export STAGE4_AGENT_ADDRESS=agent1q...
+uv run python -m fetch.demo_client --target stage4
+```
+
+All targets: `orchestrator`, `stage1`, `stage2`, `stage3-tcr`, `stage3-bcell`, `stage4`.
+
+Each specialist agent processes the message identically whether it came from the orchestrator or a direct client call — this is the Agentverse composability model.
 
 ---
 
@@ -293,30 +357,33 @@ uv run python -m fetch.pipeline_agent
 
 The agent prints its deterministic address on startup, registers with the Almanac, and begins listening for `PipelineRequest` messages.
 
-### Multi-agent decomposition (per-stage registration)
+### Multi-agent decomposition (all 7 agents)
 
-Each specialist agent can be registered independently on Agentverse. This lets other agents call individual stages — e.g. a research team could call `Stage2Agent` directly for HLA binding screening without running the full pipeline.
+Each specialist agent and the orchestrator are registered independently on Agentverse. Any agent on the network can call individual stages directly or call the orchestrator for a full pipeline run.
 
-For each agent you want to register:
+**Step 1 — register all agents**
 
-1. Create a new agent in the Agentverse dashboard. Copy its **Mailbox Key**.
-2. Set the corresponding seed env var (so the address is deterministic) and the mailbox key:
+Get your Agentverse API key from [agentverse.ai](https://agentverse.ai) (account settings), then run:
 
 ```bash
-export STAGE2_AGENT_SEED=my-custom-seed   # optional — set a memorable seed
-export AGENT_MAILBOX_KEY=<mailbox-key-for-this-agent>
-uv run python -m fetch.multi.stage2_agent
+export AGENTVERSE_KEY=<your API key>
+uv run python register_agents.py
 ```
 
-Repeat for each agent you want on the network. The orchestrator is the entry point for full-pipeline requests; individual stages can be called directly by any agent that knows their address.
+This registers all 7 agents in one shot using the seeds already in your agent code, so the Agentverse-registered addresses are identical to the addresses your running agents use.
 
-**Tip:** Run the bureau once locally without a mailbox key to print all agent addresses:
+**Step 2 — bring agents online**
 
 ```bash
+export AGENTVERSE_MAILBOX=1
 uv run python -m fetch.bureau_multi
 ```
 
-The orchestrator logs all specialist addresses on startup.
+Agents connect to Agentverse's relay using their cryptographic identity (derived from seed — no separate mailbox key needed). Each prints `Agentverse mailbox: enabled` on startup and its address. Once running they are discoverable and reachable from anywhere on the Agentverse network.
+
+**Step 3 — send requests**
+
+See the [Interacting with the Multi-Agent Bureau](#interacting-with-the-multi-agent-bureau) section above for how to call the full pipeline or individual stages via `fetch/demo_client.py`.
 
 ### Message contract
 

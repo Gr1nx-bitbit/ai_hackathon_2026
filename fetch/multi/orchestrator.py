@@ -59,30 +59,55 @@ _SESSION_TIMEOUT_S = 120
 
 
 def create_orchestrator(
-    stage1_addr: str,
-    stage2_addr: str,
-    stage3_tcr_addr: str,
-    stage3_bcell_addr: str,
-    stage4_addr: str,
-    report_addr: str,
+    stage1_addr: Optional[str] = None,
+    stage2_addr: Optional[str] = None,
+    stage3_tcr_addr: Optional[str] = None,
+    stage3_bcell_addr: Optional[str] = None,
+    stage4_addr: Optional[str] = None,
+    report_addr: Optional[str] = None,
 ) -> Agent:
     """
     Factory that captures specialist agent addresses in a closure.
-    Mirrors the create_client_agent() pattern in fetch/client_agent.py.
+
+    Addresses may be passed directly (bureau mode) or resolved from env vars
+    (standalone / Agentverse mode):
+        STAGE1_AGENT_ADDRESS, STAGE2_AGENT_ADDRESS, STAGE3_TCR_AGENT_ADDRESS,
+        STAGE3_BCELL_AGENT_ADDRESS, STAGE4_AGENT_ADDRESS, REPORT_AGENT_ADDRESS
     """
+    stage1_addr = stage1_addr or os.getenv("STAGE1_AGENT_ADDRESS")
+    stage2_addr = stage2_addr or os.getenv("STAGE2_AGENT_ADDRESS")
+    stage3_tcr_addr = stage3_tcr_addr or os.getenv("STAGE3_TCR_AGENT_ADDRESS")
+    stage3_bcell_addr = stage3_bcell_addr or os.getenv("STAGE3_BCELL_AGENT_ADDRESS")
+    stage4_addr = stage4_addr or os.getenv("STAGE4_AGENT_ADDRESS")
+    report_addr = report_addr or os.getenv("REPORT_AGENT_ADDRESS")
+
+    missing = [
+        name for name, val in [
+            ("stage1_addr / STAGE1_AGENT_ADDRESS", stage1_addr),
+            ("stage2_addr / STAGE2_AGENT_ADDRESS", stage2_addr),
+            ("stage3_tcr_addr / STAGE3_TCR_AGENT_ADDRESS", stage3_tcr_addr),
+            ("stage3_bcell_addr / STAGE3_BCELL_AGENT_ADDRESS", stage3_bcell_addr),
+            ("stage4_addr / STAGE4_AGENT_ADDRESS", stage4_addr),
+            ("report_addr / REPORT_AGENT_ADDRESS", report_addr),
+        ]
+        if not val
+    ]
+    if missing:
+        raise ValueError(
+            f"Orchestrator missing specialist addresses: {', '.join(missing)}"
+        )
+
     SEED = os.getenv("ORCHESTRATOR_AGENT_SEED", "imm_orchestrator_agent_seed_2026")
     PORT = int(os.getenv("ORCHESTRATOR_AGENT_PORT", "8016"))
+    USE_MAILBOX = bool(os.getenv("AGENTVERSE_MAILBOX"))
 
     agent = Agent(
         name="immunogenicity-orchestrator",
         seed=SEED,
         port=PORT,
         endpoint=[f"http://127.0.0.1:{PORT}/submit"],
+        mailbox=USE_MAILBOX,
     )
-
-    if os.getenv("AGENT_MAILBOX_KEY"):
-        # mailbox registration is set at Agent() construction — see pipeline_agent.py
-        pass
 
     # Per-run session store: session_id → PipelineSession
     _sessions: dict[str, PipelineSession] = {}
@@ -157,6 +182,7 @@ def create_orchestrator(
     @agent.on_event("startup")
     async def on_startup(ctx: Context) -> None:
         ctx.logger.info(f"Orchestrator started | address={agent.address}")
+        ctx.logger.info(f"Agentverse mailbox: {'enabled' if USE_MAILBOX else 'disabled (set AGENTVERSE_MAILBOX=1 to enable)'}")
         ctx.logger.info(f"  Stage1   : {stage1_addr[:24]}...")
         ctx.logger.info(f"  Stage2   : {stage2_addr[:24]}...")
         ctx.logger.info(f"  Stage3TCR: {stage3_tcr_addr[:24]}...")
@@ -446,3 +472,11 @@ def create_orchestrator(
             await _send_error(ctx, session, f"{msg.stage}: {msg.error}")
 
     return agent
+
+
+if __name__ == "__main__":
+    # Standalone mode: all specialist addresses must be set via env vars.
+    # Run `uv run python -m fetch.bureau_multi` once locally (without mailbox
+    # keys) to print every agent's address, then export them before running
+    # each agent standalone.
+    create_orchestrator().run()

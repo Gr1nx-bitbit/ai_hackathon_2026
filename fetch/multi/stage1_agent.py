@@ -24,18 +24,21 @@ from src.tools.registry import get_structural_tool
 
 SEED = os.getenv("STAGE1_AGENT_SEED", "imm_stage1_agent_seed_2026")
 PORT = int(os.getenv("STAGE1_AGENT_PORT", "8010"))
+USE_MAILBOX = bool(os.getenv("AGENTVERSE_MAILBOX"))
 
 agent = Agent(
     name="stage1-structural",
     seed=SEED,
     port=PORT,
     endpoint=[f"http://127.0.0.1:{PORT}/submit"],
+    mailbox=USE_MAILBOX,
 )
 
 
 @agent.on_event("startup")
 async def on_startup(ctx: Context) -> None:
     ctx.logger.info(f"Stage1Agent started | address={agent.address}")
+    ctx.logger.info(f"Agentverse mailbox: {'enabled' if USE_MAILBOX else 'disabled (set AGENTVERSE_MAILBOX=1 to enable)'}")
 
 
 @agent.on_message(model=Stage1Request, replies={Stage1Response, AgentError})

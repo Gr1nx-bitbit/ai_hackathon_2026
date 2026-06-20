@@ -88,6 +88,29 @@ export ASI1_API_KEY=<your key>
 uv run streamlit run app.py
 ```
 
+## Fetch AI Multi-Agent Demo
+
+```bash
+# Register all 7 agents on Agentverse (one-time setup)
+export AGENTVERSE_KEY=<your Agentverse API key>
+uv run python register_agents.py
+
+# Terminal 1 — bring all agents online and connect to Agentverse relay
+export AGENTVERSE_MAILBOX=1
+uv run python -m fetch.bureau_multi
+
+# Terminal 2 — run the full pipeline via the orchestrator
+export ORCHESTRATOR_AGENT_ADDRESS=agent1q...   # from Terminal 1 startup log
+uv run python -m fetch.demo_client --target orchestrator --scenario high_risk
+
+# Terminal 2 — call an individual stage directly (showcases composability)
+export STAGE2_AGENT_ADDRESS=agent1q...
+uv run python -m fetch.demo_client --target stage2 --scenario high_risk
+```
+
+Available targets: `orchestrator`, `stage1`, `stage2`, `stage3-tcr`, `stage3-bcell`, `stage4`.  
+Available scenarios: `high_risk`, `early_exit`, `systems_failure`, `all_clear`.
+
 ## Project Structure
 
 ```
@@ -114,9 +137,12 @@ fetch/
   messages.py                Public message contract
   pipeline_agent.py          Monolithic uAgent
   bureau.py                  Monolithic bureau
-  bureau_multi.py            Multi-agent bureau (7 agents + orchestrator)
+  bureau_multi.py            Multi-agent bureau — starts 7 agents + orchestrator, no auto-run
+  demo_client.py             Interactive client — full pipeline or individual stage
+  client_agent.py            Batch client — sends all 4 scenarios to the orchestrator
   multi/                     Specialist agent implementations
 
+register_agents.py           One-shot Agentverse registration for all 7 agents
 app.py                       Streamlit web app
 demo.py                      Rich terminal demo — 4 scenarios
 ```

@@ -21,18 +21,21 @@ from src.tools.registry import get_bcell_tool
 
 SEED = os.getenv("STAGE3_BCELL_AGENT_SEED", "imm_stage3_bcell_agent_seed_2026")
 PORT = int(os.getenv("STAGE3_BCELL_AGENT_PORT", "8013"))
+USE_MAILBOX = bool(os.getenv("AGENTVERSE_MAILBOX"))
 
 agent = Agent(
     name="stage3-bcell",
     seed=SEED,
     port=PORT,
     endpoint=[f"http://127.0.0.1:{PORT}/submit"],
+    mailbox=USE_MAILBOX,
 )
 
 
 @agent.on_event("startup")
 async def on_startup(ctx: Context) -> None:
     ctx.logger.info(f"Stage3BcellAgent started | address={agent.address}")
+    ctx.logger.info(f"Agentverse mailbox: {'enabled' if USE_MAILBOX else 'disabled (set AGENTVERSE_MAILBOX=1 to enable)'}")
 
 
 @agent.on_message(model=Stage3BcellRequest, replies={Stage3BcellResponse, AgentError})

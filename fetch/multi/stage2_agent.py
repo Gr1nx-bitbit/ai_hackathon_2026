@@ -22,18 +22,21 @@ from src.tools.registry import get_hla_tool
 
 SEED = os.getenv("STAGE2_AGENT_SEED", "imm_stage2_agent_seed_2026")
 PORT = int(os.getenv("STAGE2_AGENT_PORT", "8011"))
+USE_MAILBOX = bool(os.getenv("AGENTVERSE_MAILBOX"))
 
 agent = Agent(
     name="stage2-hla",
     seed=SEED,
     port=PORT,
     endpoint=[f"http://127.0.0.1:{PORT}/submit"],
+    mailbox=USE_MAILBOX,
 )
 
 
 @agent.on_event("startup")
 async def on_startup(ctx: Context) -> None:
     ctx.logger.info(f"Stage2Agent started | address={agent.address}")
+    ctx.logger.info(f"Agentverse mailbox: {'enabled' if USE_MAILBOX else 'disabled (set AGENTVERSE_MAILBOX=1 to enable)'}")
 
 
 @agent.on_message(model=Stage2Request, replies={Stage2Response, AgentError})
