@@ -4,7 +4,8 @@ Immunogenicity Pipeline — POC Demo
 Runs two scenarios to demonstrate the agentic routing logic:
 
   Scenario A: HIGH_RISK        — full pipeline, strong immune response, high-risk result
-  Scenario B: LOW_IMMUNOGENIC  — no HLA binding, but Stage 4 catches RAS/MAPK disruption
+  Scenario B: BCELL_AND_SYSTEMS — B-cell epitope detected + Stage 4 catches RAS/MAPK disruption
+  Scenario D: BCELL_ONLY       — Stage 3b B-cell epitope detected, systems clear
 
 Run:
     python demo.py
@@ -37,9 +38,9 @@ SCENARIOS: list[PipelineInput] = [
         hla_profile=["HLA-A*02:01", "HLA-B*07:02", "HLA-C*07:02", "HLA-DRB1*01:01", "HLA-DQB1*05:01"],
     ),
     PipelineInput(
-        patient_id="LOW_IMMUNOGENIC",
+        patient_id="BCELL_AND_SYSTEMS",
         sequence=(
-            "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSY RKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRT"
+            "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSYRKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRT"
             "GEGFLCVFAINNTKSFEDIHHQRQEIKRVKDSEDVPMVLVGNKCDLPARTVETRQAQDLARSYGIPYIETSAKTR"
         ),
         edit_positions=[12, 13],
@@ -55,7 +56,7 @@ SCENARIOS: list[PipelineInput] = [
         hla_profile=["HLA-A*02:01", "HLA-B*35:01", "HLA-DRB1*04:01"],
     ),
     PipelineInput(
-        patient_id="ALL_CLEAR",
+        patient_id="BCELL_ONLY",
         sequence=(
             "MSHHWGYGKHNGPEHWHKDFPIAKGERQSPVDIDTHTAKYDPSLKPLSVSYDQATSLRILNNGAAFNVEFDDSQDKAVL"
             "KGGPLDGTYRLIQFHFHWGSLDGQGSEHTVDKKKYAAELHLVHWNTKYGDFGTAAQQPDGLAVLGIFLKVGSAKPGLQKVVDVLDSIK"
@@ -67,9 +68,9 @@ SCENARIOS: list[PipelineInput] = [
 
 SCENARIO_LABELS = {
     "HIGH_RISK":       "Scenario A — Immune Rejection Risk (Full Pipeline)",
-    "LOW_IMMUNOGENIC":  "Scenario B — Low Immunogenic Risk (Stage 4 catches RAS/MAPK disruption)",
-    "SYSTEMS_FAILURE": "Scenario C — Cellular Disruption (Immune System Tolerates, Cell Does Not)",
-    "ALL_CLEAR":       "Scenario D — All Clear (Full Pipeline, Safe Result)",
+    "BCELL_AND_SYSTEMS": "Scenario B — B-Cell Epitope + RAS/MAPK Systems Failure",
+    "SYSTEMS_FAILURE":   "Scenario C — Cellular Disruption (Immune System Tolerates, Cell Does Not)",
+    "BCELL_ONLY":        "Scenario D — Stage 3b Flag: B-Cell Epitope Detected, Systems Clear",
 }
 
 

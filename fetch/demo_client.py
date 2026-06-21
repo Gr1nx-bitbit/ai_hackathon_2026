@@ -70,10 +70,10 @@ _SCENARIOS: dict[str, PipelineInput] = {
         edit_positions=[47, 48, 49, 50, 51, 52, 53],
         hla_profile=["HLA-A*02:01", "HLA-B*07:02", "HLA-C*07:02", "HLA-DRB1*01:01"],
     ),
-    "low_immunogenic": PipelineInput(
-        patient_id="LOW_IMMUNOGENIC",
+    "bcell_and_systems": PipelineInput(
+        patient_id="BCELL_AND_SYSTEMS",
         sequence=(
-            "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSY RKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRT"
+            "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSYRKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRT"
             "GEGFLCVFAINNTKSFEDIHHQRQEIKRVKDSEDVPMVLVGNKCDLPARTVETRQAQDLARSYGIPYIETSAKTR"
         ),
         edit_positions=[12, 13],
@@ -88,8 +88,8 @@ _SCENARIOS: dict[str, PipelineInput] = {
         edit_positions=[22, 23, 24, 25],
         hla_profile=["HLA-A*02:01", "HLA-B*35:01", "HLA-DRB1*04:01"],
     ),
-    "all_clear": PipelineInput(
-        patient_id="ALL_CLEAR",
+    "bcell_only": PipelineInput(
+        patient_id="BCELL_ONLY",
         sequence=(
             "MSHHWGYGKHNGPEHWHKDFPIAKGERQSPVDIDTHTAKYDPSLKPLSVSYDQATSLRILNNGAAFNVEFDDSQDKAVL"
             "KGGPLDGTYRLIQFHFHWGSLDGQGSEHTVDKKKYAAELHLVHWNTKYGDFGTAAQQPDGLAVLGIFLKVGSAKPGLQKVVDVLDSIK"
@@ -287,7 +287,7 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--scenario",
-        choices=["high_risk", "low_immunogenic", "systems_failure", "all_clear"],
+        choices=["high_risk", "bcell_and_systems", "systems_failure", "bcell_only"],
         default="high_risk",
         help="Demo scenario to use (default: high_risk)",
     )

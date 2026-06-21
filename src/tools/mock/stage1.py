@@ -5,7 +5,7 @@ Scenario dispatch is keyed on PipelineInput.patient_id so the demo can
 exercise different pipeline paths without changing graph logic.
 
   patient_id="HIGH_RISK"      → exposed edit zone, high pLDDT (proceeds normally)
-  patient_id="LOW_IMMUNOGENIC" → buried edit zone, high pLDDT (low HLA binding risk; Stage 4 catches RAS/MAPK disruption)
+  patient_id="BCELL_AND_SYSTEMS" → buried edit zone, high pLDDT (B-cell epitope + Stage 4 catches RAS/MAPK disruption)
   patient_id="LOW_CONFIDENCE" → first pass returns low pLDDT → triggers retry loop
                                  second pass (fallback_mode=True) returns conservative result
 """
@@ -26,7 +26,7 @@ _SCENARIOS: dict[str, StructuralResult] = {
     ),
     # Conservative intronic edit — buried residue, high confidence,
     # minimal surface impact, clean transcriptome response
-    "ALL_CLEAR": StructuralResult(
+    "BCELL_ONLY": StructuralResult(
         plddt_score=94.2,
         sasa_edit_zone=11.7,    # buried
         edit_zone_exposed=False,
@@ -40,7 +40,7 @@ _SCENARIOS: dict[str, StructuralResult] = {
         confidence="high",
         fallback_mode=False,
     ),
-    "LOW_IMMUNOGENIC": StructuralResult(
+    "BCELL_AND_SYSTEMS": StructuralResult(
         plddt_score=91.6,
         sasa_edit_zone=18.4,    # buried in hydrophobic core
         edit_zone_exposed=False,

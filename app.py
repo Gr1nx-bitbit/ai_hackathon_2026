@@ -81,10 +81,10 @@ PRESETS: dict[str, PipelineInput] = {
         edit_positions=[47, 48, 49, 50, 51, 52, 53],
         hla_profile=["HLA-A*02:01", "HLA-B*07:02", "HLA-C*07:02", "HLA-DRB1*01:01", "HLA-DQB1*05:01"],
     ),
-    "B — Early Exit: No HLA Binders": PipelineInput(
-        patient_id="EARLY_EXIT",
+    "B — B-Cell Epitope + RAS/MAPK Systems Failure": PipelineInput(
+        patient_id="BCELL_AND_SYSTEMS",
         sequence=(
-            "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSY RKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRT"
+            "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSYRKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRT"
             "GEGFLCVFAINNTKSFEDIHHQRQEIKRVKDSEDVPMVLVGNKCDLPARTVETRQAQDLARSYGIPYIETSAKTR"
         ),
         edit_positions=[12, 13],
@@ -99,8 +99,8 @@ PRESETS: dict[str, PipelineInput] = {
         edit_positions=[22, 23, 24, 25],
         hla_profile=["HLA-A*02:01", "HLA-B*35:01", "HLA-DRB1*04:01"],
     ),
-    "D — All Clear: Safe Edit": PipelineInput(
-        patient_id="ALL_CLEAR",
+    "D — Stage 3b Flag: B-Cell Epitope Detected, Systems Clear": PipelineInput(
+        patient_id="BCELL_ONLY",
         sequence=(
             "MSHHWGYGKHNGPEHWHKDFPIAKGERQSPVDIDTHTAKYDPSLKPLSVSYDQATSLRILNNGAAFNVEFDDSQDKAVL"
             "KGGPLDGTYRLIQFHFHWGSLDGQGSEHTVDKKKYAAELHLVHWNTKYGDFGTAAQQPDGLAVLGIFLKVGSAKPGLQKVVDVLDSIK"
@@ -565,8 +565,9 @@ The immune system may recognise the modified protein as foreign. The pipeline ch
 - **Stage 2** — Do edit-zone peptides bind the patient's HLA alleles? (IEDB / NetMHCpan)
 - **Stage 3** — Will those peptides activate T-cells (NetTCR-2.0) or trigger B-cell antibody responses (BepiPred)?
 
-An **early exit** fires if both HLA class gates clear at Stage 2 (no presentation possible),
-or if Stage 3 reactivity is too high to continue safely.
+All four stages always run — even an edit with no HLA binders still enters the
+gene regulatory network, and Stage 4 may flag systems disruption that immunogenicity
+screening alone would miss.
 
 **Systems disruption (Stage 4)**
 Even if the immune system tolerates the edit, the cell may not. Stage 4 simulates

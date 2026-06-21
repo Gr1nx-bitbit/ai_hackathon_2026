@@ -7,9 +7,9 @@ Covers:
 
 Scenarios:
   HIGH_RISK / SYSTEMS_FAILURE — severe transcriptome disruption, toxicity_flag=True
-  LOW_IMMUNOGENIC             — KRAS G12/G13 edit disrupts RAS/MAPK signalling; moderate
+  BCELL_AND_SYSTEMS           — KRAS G12/G13 edit disrupts RAS/MAPK signalling; moderate
                                 instability caught by Stage 4 despite no immune response
-  ALL_CLEAR                   — stable transcriptome, minor adaptive stress response only
+  BCELL_ONLY                  — stable transcriptome, minor adaptive stress response only
 """
 
 from src.models.pipeline import (
@@ -202,10 +202,10 @@ def _low_immunogenic_result() -> SystemsResult:
 
 class MockSystemsTool(SystemsTool):
     def predict(self, inp: PipelineInput) -> SystemsResult:
-        if inp.patient_id == "LOW_IMMUNOGENIC":
+        if inp.patient_id == "BCELL_AND_SYSTEMS":
             return _low_immunogenic_result()
         if inp.patient_id == "SYSTEMS_FAILURE":
             return _systems_failure_result()
-        if inp.patient_id == "ALL_CLEAR":
+        if inp.patient_id == "BCELL_ONLY":
             return _all_clear_result()
         return _disrupted_result()

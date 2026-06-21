@@ -68,7 +68,7 @@ _REPORTS: dict[str, ClinicalReport] = {
         ),
     ),
 
-    "LOW_IMMUNOGENIC": ClinicalReport(
+    "BCELL_AND_SYSTEMS": ClinicalReport(
         headline=(
             "This gene edit is predicted CAUTION: the immune system is not expected to "
             "reject the edited cells, but AIDO.Cell detects RAS/MAPK pathway disruption "
@@ -166,11 +166,11 @@ _REPORTS: dict[str, ClinicalReport] = {
         ),
     ),
 
-    "ALL_CLEAR": ClinicalReport(
+    "BCELL_ONLY": ClinicalReport(
         headline=(
-            "This gene edit is predicted SAFE across all four pipeline stages: "
-            "weak HLA binding, no T-cell or B-cell reactivity, and a stable "
-            "transcriptome with only minor adaptive heat-shock responses."
+            "This gene edit is predicted CAUTION: Stage 3b detected a B-cell epitope "
+            "at the edit zone. HLA binding is present (structural context limits processing), "
+            "no T-cell activation, and transcriptome is stable."
         ),
         stage_findings=[
             "Stage 1 — Structural: The edited residues are deeply buried (SASA = 11.7 Å², "

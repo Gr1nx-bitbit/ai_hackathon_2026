@@ -5,11 +5,11 @@ Mock HLA binding tool — values derived from real IEDB predictions
 Scenarios:
   HIGH_RISK        → strong Class I binder (HLA-C*07:02, %Rank=0.06)
                      + strong HLA-A*02:01 binder → strong immunogenic signal
-  LOW_IMMUNOGENIC  → no Class I binders above threshold (%Rank=2.3)
+  BCELL_AND_SYSTEMS → no Class I binders above threshold (%Rank=2.3)
                      + no Class II binders (%Rank=21.0) → pipeline still runs all stages
   SYSTEMS_FAILURE  → strong HLA-B*35:01 Class I binder (%Rank=0.41)
                      + weak Class II (%Rank=9.8)
-  ALL_CLEAR        → strong HLA-A*03:01 Class I binder (%Rank=0.47)
+  BCELL_ONLY       → strong HLA-A*03:01 Class I binder (%Rank=0.47)
                      + no Class II binders (%Rank=19.0)
 """
 
@@ -63,13 +63,13 @@ _HIGH_RISK_RESULT = HLABindingResult(
 )
 
 # ---------------------------------------------------------------------------
-# LOW_IMMUNOGENIC — KRAS, edit zone positions 12–13 (G12/G13 hotspot)
+# BCELL_AND_SYSTEMS — KRAS, edit zone positions 12–13 (G12/G13 hotspot)
 # No Class I or Class II binders above threshold. Pipeline still runs all
 # stages — even without immune activation, the edit enters the gene
 # regulatory network and Stage 4 may flag systems disruption.
 # ---------------------------------------------------------------------------
 
-_LOW_IMMUNOGENIC_RESULT = HLABindingResult(
+_BCELL_AND_SYSTEMS_RESULT = HLABindingResult(
     class_i_binders=[
         PeptideBinding(
             peptide="MTEYKLVVV",
@@ -141,10 +141,10 @@ _SYSTEMS_FAILURE_RESULT = HLABindingResult(
 )
 
 # ---------------------------------------------------------------------------
-# ALL_CLEAR — carbonic anhydrase II (CA2), edit zone positions 8–9
+# BCELL_ONLY — carbonic anhydrase II (CA2), edit zone positions 8–9
 # ---------------------------------------------------------------------------
 
-_ALL_CLEAR_RESULT = HLABindingResult(
+_BCELL_ONLY_RESULT = HLABindingResult(
     class_i_binders=[
         PeptideBinding(
             peptide="MSHHWGYGK",
@@ -177,10 +177,10 @@ _ALL_CLEAR_RESULT = HLABindingResult(
 
 class MockHLABindingTool(HLABindingTool):
     def predict(self, inp: PipelineInput, structural: StructuralResult) -> HLABindingResult:
-        if inp.patient_id == "LOW_IMMUNOGENIC":
-            return _LOW_IMMUNOGENIC_RESULT
+        if inp.patient_id == "BCELL_AND_SYSTEMS":
+            return _BCELL_AND_SYSTEMS_RESULT
         if inp.patient_id == "SYSTEMS_FAILURE":
             return _SYSTEMS_FAILURE_RESULT
-        if inp.patient_id == "ALL_CLEAR":
-            return _ALL_CLEAR_RESULT
+        if inp.patient_id == "BCELL_ONLY":
+            return _BCELL_ONLY_RESULT
         return _HIGH_RISK_RESULT

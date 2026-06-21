@@ -6,9 +6,9 @@ they are joined in the stage3_join node.
 
 Scenarios:
   HIGH_RISK        — TCR prob=0.73 (above threshold), conformational B-cell epitope detected
-  LOW_IMMUNOGENIC  — TCR prob=0.28 (below threshold), no B-cell epitope; Stage 4 catches systems disruption
-  SYSTEMS_FAILURE  — TCR prob=0.31 (below threshold), no B-cell epitope
-  ALL_CLEAR        — TCR prob=0.22 (below threshold), no B-cell epitope
+  BCELL_AND_SYSTEMS — TCR prob=0.28 (below threshold), no B-cell epitope (mock); Stage 4 catches systems disruption
+  SYSTEMS_FAILURE   — TCR prob=0.31 (below threshold), no B-cell epitope
+  BCELL_ONLY        — TCR prob=0.22 (below threshold), B-cell epitope detected (real BepiPred)
 """
 
 from src.models.pipeline import (
@@ -20,7 +20,7 @@ from src.models.pipeline import (
 )
 from src.tools.base import TCRTool, BCellTool
 
-_LOW_REACTIVITY_PIDS = {"LOW_IMMUNOGENIC", "SYSTEMS_FAILURE", "ALL_CLEAR"}
+_LOW_REACTIVITY_PIDS = {"BCELL_AND_SYSTEMS", "SYSTEMS_FAILURE", "BCELL_ONLY"}
 
 
 class MockTCRTool(TCRTool):
@@ -40,7 +40,7 @@ class MockTCRTool(TCRTool):
         top_binder = hla_binding.class_i_binders[0]
 
         if inp.patient_id in _LOW_REACTIVITY_PIDS:
-            prob = 0.22 if inp.patient_id == "ALL_CLEAR" else (0.28 if inp.patient_id == "LOW_IMMUNOGENIC" else 0.31)
+            prob = 0.22 if inp.patient_id == "BCELL_ONLY" else (0.28 if inp.patient_id == "BCELL_AND_SYSTEMS" else 0.31)
             return TCRResult(
                 peptide=top_binder.peptide,
                 hla_allele=top_binder.hla_allele,
@@ -60,6 +60,13 @@ class MockTCRTool(TCRTool):
 class MockBCellTool(BCellTool):
     def predict(self, inp: PipelineInput, structural: StructuralResult) -> BCellResult:
         # BepiPred score range ≈ −1 to +1; threshold = 0.35
+        if inp.patient_id == "BCELL_AND_SYSTEMS":
+            return BCellResult(
+                epitope_residues=[],
+                bcell_score=0.11,       # KRAS G12/G13 edit zone — below 0.35 threshold
+                epitope_detected=False,
+            )
+
         if inp.patient_id == "SYSTEMS_FAILURE":
             return BCellResult(
                 epitope_residues=[],
@@ -67,11 +74,11 @@ class MockBCellTool(BCellTool):
                 epitope_detected=False,
             )
 
-        if inp.patient_id == "ALL_CLEAR":
+        if inp.patient_id == "BCELL_ONLY":
             return BCellResult(
-                epitope_residues=[],
-                bcell_score=-0.12,      # clearly non-epitope
-                epitope_detected=False,
+                epitope_residues=[8, 9],
+                bcell_score=0.41,       # real BepiPred flags CA2 edit zone
+                epitope_detected=True,
             )
 
         # HIGH_RISK — mean 0.34 over edit zone; segment at residues 51–53 is above
