@@ -68,37 +68,48 @@ _REPORTS: dict[str, ClinicalReport] = {
         ),
     ),
 
-    "EARLY_EXIT": ClinicalReport(
+    "LOW_IMMUNOGENIC": ClinicalReport(
         headline=(
-            "This gene edit is predicted SAFE from an immunogenic standpoint: neither "
-            "HLA Class I nor Class II binding was detected, and the pipeline exited "
-            "early at Stage 2 without triggering T-cell or systems analysis."
+            "This gene edit is predicted CAUTION: the immune system is not expected to "
+            "reject the edited cells, but AIDO.Cell detects RAS/MAPK pathway disruption "
+            "and a cryptic splice site in the canonical KRAS transcript."
         ),
         stage_findings=[
             "Stage 1 — Structural: The edited residues are buried (SASA = 18.4 Å²) "
-            "with very high structural confidence (pLDDT = 91.6). Buried edits are "
-            "substantially less likely to generate proteasomal peptides that reach "
-            "MHC-I loading.",
-            "Stage 2 — HLA Presentation: No HLA binders were detected across the "
-            "patient's Class I alleles (top %Rank = 2.3, above the 2.0% threshold) or "
-            "Class II (top %Rank = 21.0, above the 10.0% threshold). Both no-binding "
-            "gates cleared. Early exit confirmed — no antigen presentation risk.",
+            "with very high structural confidence (pLDDT = 91.6). Low surface exposure "
+            "limits antigen presentation probability.",
+            "Stage 2 — HLA Presentation: No HLA binders were detected across Class I "
+            "(top %Rank = 2.3) or Class II (top %Rank = 21.0). The immune system is "
+            "unlikely to mount an adaptive response to this edit.",
+            "Stage 3 — Immune Reactivity: TCR binding probability 0.28 (below the 0.5 "
+            "threshold). No linear B-cell epitopes detected. Consistent with low "
+            "immunogenic risk from Stage 2.",
+            "Stage 4 — Systems Dynamics: A cryptic splice site was introduced in "
+            "ENST00000256078.9 (canonical KRAS transcript), shifting isoform balance "
+            "(ΔΨ = 0.19). AIDO.Cell predicts upregulation of MAPK1/RAF1 and loss of "
+            "NF1/DUSP6 negative feedback in liver — consistent with constitutive "
+            "RAS/MAPK pathway activation. Toxicity flag raised in liver tissue.",
         ],
         risk_rationale=(
-            "The edit resides in a deeply buried hydrophobic region with no predicted "
-            "proteasomal cleavage sites yielding HLA-presented peptides. An overall risk "
-            "score of 0.065 reflects near-background immunogenic risk. The pipeline's "
-            "cost-saving early exit is clinically meaningful: absence of HLA binding "
-            "effectively rules out T-cell and B-cell adaptive responses as primary "
-            "safety concerns for this patient's HLA haplotype."
+            "Despite negligible immunogenic risk, the KRAS G12/G13 edit disrupts a "
+            "key oncogenic signalling node. The absence of immune rejection does not "
+            "confer safety — the edit still enters the gene regulatory network and "
+            "Stage 4 reveals downstream pathway dysregulation that warrants attention "
+            "before clinical progression."
         ),
-        mitigation_suggestions=[],
+        mitigation_suggestions=[
+            "Validate the cryptic splice site experimentally using RT-PCR on "
+            "ENST00000256078.9 in the target tissue.",
+            "Assess MAPK pathway activation (pERK, pMEK) in edited cells before "
+            "advancing to animal studies.",
+            "Consider repositioning the edit to avoid the G12/G13 hotspot or use a "
+            "base editor to minimise transcriptomic footprint.",
+        ],
         confidence_note=(
-            "HLA binding predictions are haplotype-specific. This result applies to the "
-            "tested alleles (HLA-A*01:01, HLA-B*08:01, HLA-DRB1*03:01) only. If the "
-            "patient's full HLA typing is incomplete, run the full six-allele panel. "
-            "Innate immune responses (TLR activation, complement) are not modelled by "
-            "this pipeline and should be assessed separately for the vector/delivery system."
+            "HLA binding predictions are haplotype-specific (HLA-A*01:01, HLA-B*08:01, "
+            "HLA-DRB1*03:01). Stage 4 systems predictions are mock — real AIDO.Cell "
+            "inference requires the GenBio AI API. Innate immune responses and "
+            "vector-related toxicity are not modelled."
         ),
     ),
 

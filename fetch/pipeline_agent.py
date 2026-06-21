@@ -122,14 +122,13 @@ async def handle_pipeline_request(
         await ctx.send(
             sender,
             PipelineResponse(
-                patient_id=rv.early_exit_stage and msg.patient_id or msg.patient_id,
+                patient_id=msg.patient_id,
                 recommendation=rv.recommendation,
                 overall_risk=rv.overall_risk,
                 structural_risk=rv.structural_risk,
                 immunogenic_risk=rv.immunogenic_risk,
                 reactivity_risk=rv.reactivity_risk,
                 systems_risk=rv.systems_risk,
-                early_exit_stage=rv.early_exit_stage,
                 summary=rv.summary,
             ),
         )

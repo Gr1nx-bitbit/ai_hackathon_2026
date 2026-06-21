@@ -2,8 +2,7 @@
 Stage 2 — HLA Antigen Presentation Agent
 
 Wraps HLABindingTool.predict() (NetChop + NetMHCpan in production).
-Accepts Stage2Request, returns Stage2Response with early_exit flag embedded
-in the serialised HLABindingResult.
+Accepts Stage2Request, returns Stage2Response with HLABindingResult serialised.
 """
 
 import asyncio

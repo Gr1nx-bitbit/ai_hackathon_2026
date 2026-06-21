@@ -68,45 +68,7 @@ def _systems_risk(s: SystemsResult) -> float:
 
 def compute_risk_vector(state: PipelineState) -> RiskVector:
     s_risk = _structural_risk(state["structural"])
-
-    if state["hla_binding"].early_exit:
-        return RiskVector(
-            structural_risk=s_risk,
-            immunogenic_risk=0.05,
-            reactivity_risk=0.0,
-            systems_risk=0.0,
-            overall_risk=round(0.10 * s_risk + 0.05, 3),
-            recommendation="safe",
-            early_exit_stage=2,
-            summary=(
-                "HLA Class I and Class II binding thresholds both indicate negligible "
-                "presentation risk. Pipeline exited early at Stage 2. "
-                "No T-cell or systems analysis required."
-            ),
-        )
-
     i_risk = _immunogenic_risk(state["hla_binding"])
-
-    if state["reactivity"] is not None and state["reactivity"].high_risk_flag and state["systems"] is None:
-        r_risk = _reactivity_risk(state["reactivity"])
-        overall = round(0.10 * s_risk + 0.35 * i_risk + 0.35 * r_risk + 0.20 * 0.5, 3)
-        rec = "high_risk" if overall >= 0.55 else "caution"
-        return RiskVector(
-            structural_risk=s_risk,
-            immunogenic_risk=i_risk,
-            reactivity_risk=r_risk,
-            systems_risk=0.5,   # unknown — flagged as moderate pending full Stage 4
-            overall_risk=overall,
-            recommendation=rec,
-            early_exit_stage=3,
-            summary=(
-                f"High T-cell and B-cell reactivity signals detected "
-                f"(TCR prob={state['reactivity'].tcr.binding_probability:.2f}, "
-                f"BepiPred={state['reactivity'].bcell.bcell_score:.2f}). "
-                "Pipeline exited early at Stage 3. Systems analysis skipped."
-            ),
-        )
-
     r_risk = _reactivity_risk(state["reactivity"]) if state["reactivity"] else 0.0
     sys_risk = _systems_risk(state["systems"]) if state["systems"] else 0.0
 
@@ -142,7 +104,6 @@ def compute_risk_vector(state: PipelineState) -> RiskVector:
         systems_risk=sys_risk,
         overall_risk=overall,
         recommendation=rec,
-        early_exit_stage=None,
         summary=(
             f"Full pipeline completed. Overall risk score: {overall:.3f}.{systems_note}"
         ),

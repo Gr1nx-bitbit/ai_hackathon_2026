@@ -7,6 +7,8 @@ Covers:
 
 Scenarios:
   HIGH_RISK / SYSTEMS_FAILURE — severe transcriptome disruption, toxicity_flag=True
+  LOW_IMMUNOGENIC             — KRAS G12/G13 edit disrupts RAS/MAPK signalling; moderate
+                                instability caught by Stage 4 despite no immune response
   ALL_CLEAR                   — stable transcriptome, minor adaptive stress response only
 """
 
@@ -153,8 +155,55 @@ def _all_clear_result() -> SystemsResult:
     )
 
 
+def _low_immunogenic_result() -> SystemsResult:
+    """
+    KRAS G12/G13 edit — RAS/MAPK pathway disruption.
+    No immune activation, but the oncogenic context creates a cryptic splice
+    site and moderate transcriptome instability caught only by Stage 4.
+    """
+    splice = SpliceResult(
+        cryptic_sites_detected=True,
+        affected_transcripts=["ENST00000256078.9"],   # canonical KRAS transcript
+        delta_psi=0.19,
+    )
+    liver = PerturbationResult(
+        tissue="liver",
+        top_upregulated=[
+            ("MAPK1",   1.42),   # ERK2 — RAS downstream effector
+            ("RAF1",    1.28),   # RAF kinase activated by KRAS
+            ("CCND1",   1.15),   # cyclin D1 — cell cycle entry
+        ],
+        top_downregulated=[
+            ("NF1",    -1.38),   # neurofibromin — RAS GTPase activator
+            ("DUSP6",  -1.11),   # ERK phosphatase — negative feedback lost
+        ],
+        housekeeping_stability=0.64,
+        toxicity_flag=True,
+    )
+    hek293 = PerturbationResult(
+        tissue="HEK293",
+        top_upregulated=[
+            ("MAPK3",   1.19),   # ERK1
+            ("MYC",     0.98),
+        ],
+        top_downregulated=[
+            ("RASSF1", -0.88),   # RAS association domain-containing tumour suppressor
+        ],
+        housekeeping_stability=0.71,
+        toxicity_flag=False,
+    )
+    stability = (liver.housekeeping_stability + hek293.housekeeping_stability) / 2
+    return SystemsResult(
+        splice=splice,
+        perturbations=[liver, hek293],
+        overall_stability_score=round(stability, 3),
+    )
+
+
 class MockSystemsTool(SystemsTool):
     def predict(self, inp: PipelineInput) -> SystemsResult:
+        if inp.patient_id == "LOW_IMMUNOGENIC":
+            return _low_immunogenic_result()
         if inp.patient_id == "SYSTEMS_FAILURE":
             return _systems_failure_result()
         if inp.patient_id == "ALL_CLEAR":

@@ -99,7 +99,10 @@ def create_orchestrator(
 
     SEED = os.getenv("ORCHESTRATOR_AGENT_SEED", "imm_orchestrator_agent_seed_2026")
     PORT = int(os.getenv("ORCHESTRATOR_AGENT_PORT", "8016"))
-    USE_MAILBOX = bool(os.getenv("AGENTVERSE_MAILBOX"))
+    # ORCHESTRATOR_MAILBOX exposes only the orchestrator to Agentverse's relay,
+    # keeping all intra-pipeline hops local within the bureau.
+    # AGENTVERSE_MAILBOX also works (used when running the orchestrator standalone).
+    USE_MAILBOX = bool(os.getenv("ORCHESTRATOR_MAILBOX") or os.getenv("AGENTVERSE_MAILBOX"))
 
     agent = Agent(
         name="immunogenicity-orchestrator",
@@ -182,7 +185,7 @@ def create_orchestrator(
     @agent.on_event("startup")
     async def on_startup(ctx: Context) -> None:
         ctx.logger.info(f"Orchestrator started | address={agent.address}")
-        ctx.logger.info(f"Agentverse mailbox: {'enabled' if USE_MAILBOX else 'disabled (set AGENTVERSE_MAILBOX=1 to enable)'}")
+        ctx.logger.info(f"Agentverse mailbox: {'enabled' if USE_MAILBOX else 'disabled (set ORCHESTRATOR_MAILBOX=1 to enable)'}")
         ctx.logger.info(f"  Stage1   : {stage1_addr[:24]}...")
         ctx.logger.info(f"  Stage2   : {stage2_addr[:24]}...")
         ctx.logger.info(f"  Stage3TCR: {stage3_tcr_addr[:24]}...")
@@ -300,7 +303,7 @@ def create_orchestrator(
         )
 
     # ---------------------------------------------------------------------------
-    # Stage 2 response — early exit or fan out to parallel Stage 3
+    # Stage 2 response — always fan out to parallel Stage 3
     # ---------------------------------------------------------------------------
 
     @agent.on_message(model=Stage2Response)
@@ -314,14 +317,8 @@ def create_orchestrator(
         session.hla_binding = hla
         ctx.logger.info(
             f"[{msg.session_id[:8]}] Stage2 done | "
-            f"early_exit={hla.early_exit} "
             f"ClassI_rank={hla.top_class_i_rank:.2f} ClassII_rank={hla.top_class_ii_rank:.2f}"
         )
-
-        if hla.early_exit:
-            ctx.logger.info(f"[{msg.session_id[:8]}] Early exit at Stage 2 → report")
-            await _send_to_report(ctx, session)
-            return
 
         # Fan out to both Stage 3 branches simultaneously
         input_json = session.pipeline_input.model_dump_json()
@@ -360,17 +357,13 @@ def create_orchestrator(
             f"high_risk={high_risk}"
         )
 
-        if high_risk:
-            ctx.logger.info(f"[{session.session_id[:8]}] High reactivity — early exit → report")
-            await _send_to_report(ctx, session)
-        else:
-            await ctx.send(
-                stage4_addr,
-                Stage4Request(
-                    session_id=session.session_id,
-                    input_json=session.pipeline_input.model_dump_json(),
-                ),
-            )
+        await ctx.send(
+            stage4_addr,
+            Stage4Request(
+                session_id=session.session_id,
+                input_json=session.pipeline_input.model_dump_json(),
+            ),
+        )
 
     @agent.on_message(model=Stage3TcrResponse)
     async def handle_stage3_tcr(ctx: Context, sender: str, msg: Stage3TcrResponse) -> None:
@@ -453,8 +446,9 @@ def create_orchestrator(
                 immunogenic_risk=rv.immunogenic_risk,
                 reactivity_risk=rv.reactivity_risk,
                 systems_risk=rv.systems_risk,
-                early_exit_stage=rv.early_exit_stage,
+
                 summary=rv.summary,
+                clinical_report_json=msg.clinical_report_json,
             ),
         )
 

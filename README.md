@@ -90,20 +90,26 @@ uv run streamlit run app.py
 
 ## Fetch AI Multi-Agent Demo
 
+Each of the 7 specialist agents + orchestrator runs in its own terminal with an Agentverse mailbox. The full pipeline routes through Agentverse's relay — agents are individually reachable from any Agentverse client.
+
 ```bash
-# Register all 7 agents on Agentverse (one-time setup)
+# One-time setup: register all 7 agents on Agentverse
 export AGENTVERSE_KEY=<your Agentverse API key>
 uv run python register_agents.py
 
-# Terminal 1 — bring all agents online and connect to Agentverse relay
-export AGENTVERSE_MAILBOX=1
-uv run python -m fetch.bureau_multi
+# Start all agents (one terminal each, all with AGENTVERSE_MAILBOX=1)
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.orchestrator
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage1_agent
+# ... (repeat for stage2, stage3_tcr_agent, stage3_bcell_agent, stage4_agent, report_agent)
 
-# Terminal 2 — run the full pipeline via the orchestrator
-export ORCHESTRATOR_AGENT_ADDRESS=agent1q...   # from Terminal 1 startup log
+# Re-register after agents are running (updates Agentverse with relay URLs)
+uv run python register_agents.py
+
+# Run the full pipeline via the orchestrator — do NOT set AGENTVERSE_MAILBOX on the client
+export ORCHESTRATOR_AGENT_ADDRESS=agent1q...   # from orchestrator startup log
 uv run python -m fetch.demo_client --target orchestrator --scenario high_risk
 
-# Terminal 2 — call an individual stage directly (showcases composability)
+# Call any individual stage directly
 export STAGE2_AGENT_ADDRESS=agent1q...
 uv run python -m fetch.demo_client --target stage2 --scenario high_risk
 ```

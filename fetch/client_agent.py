@@ -39,7 +39,7 @@ _TEST_REQUESTS = [
         hla_profile=["HLA-A*02:01", "HLA-B*07:02", "HLA-C*07:02", "HLA-DRB1*01:01"],
     ),
     PipelineRequest(
-        patient_id="EARLY_EXIT",
+        patient_id="LOW_IMMUNOGENIC",
         sequence=(
             "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSY RKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRT"
             "GEGFLCVFAINNTKSFEDIHHQRQEIKRVKDSEDVPMVLVGNKCDLPARTVETRQAQDLARSYGIPYIETSAKTR"
@@ -106,10 +106,8 @@ def create_client_agent(pipeline_address: str = _FALLBACK_ADDRESS) -> Agent:
             return
 
         label = _RECOMMENDATION_LABEL.get(msg.recommendation, msg.recommendation.upper())
-        exit_note = f" (early exit stage {msg.early_exit_stage})" if msg.early_exit_stage else ""
-
         ctx.logger.info(
-            f"[{msg.patient_id}] {label}{exit_note} | "
+            f"[{msg.patient_id}] {label} | "
             f"overall={msg.overall_risk:.3f} "
             f"struct={msg.structural_risk:.3f} "
             f"immuno={msg.immunogenic_risk:.3f} "

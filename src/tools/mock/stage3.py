@@ -5,9 +5,10 @@ These run as parallel branches in the graph. Each returns its own model;
 they are joined in the stage3_join node.
 
 Scenarios:
-  HIGH_RISK       — TCR prob=0.73 (above threshold), conformational B-cell epitope detected
-  SYSTEMS_FAILURE — TCR prob=0.31 (below threshold), no B-cell epitope → stage 4 runs
-  ALL_CLEAR       — TCR prob=0.22 (below threshold), no B-cell epitope → stage 4 runs
+  HIGH_RISK        — TCR prob=0.73 (above threshold), conformational B-cell epitope detected
+  LOW_IMMUNOGENIC  — TCR prob=0.28 (below threshold), no B-cell epitope; Stage 4 catches systems disruption
+  SYSTEMS_FAILURE  — TCR prob=0.31 (below threshold), no B-cell epitope
+  ALL_CLEAR        — TCR prob=0.22 (below threshold), no B-cell epitope
 """
 
 from src.models.pipeline import (
@@ -19,7 +20,7 @@ from src.models.pipeline import (
 )
 from src.tools.base import TCRTool, BCellTool
 
-_LOW_REACTIVITY_PIDS = {"SYSTEMS_FAILURE", "ALL_CLEAR"}
+_LOW_REACTIVITY_PIDS = {"LOW_IMMUNOGENIC", "SYSTEMS_FAILURE", "ALL_CLEAR"}
 
 
 class MockTCRTool(TCRTool):
@@ -39,7 +40,7 @@ class MockTCRTool(TCRTool):
         top_binder = hla_binding.class_i_binders[0]
 
         if inp.patient_id in _LOW_REACTIVITY_PIDS:
-            prob = 0.22 if inp.patient_id == "ALL_CLEAR" else 0.31
+            prob = 0.22 if inp.patient_id == "ALL_CLEAR" else (0.28 if inp.patient_id == "LOW_IMMUNOGENIC" else 0.31)
             return TCRResult(
                 peptide=top_binder.peptide,
                 hla_allele=top_binder.hla_allele,

@@ -3,8 +3,8 @@ Immunogenicity Pipeline — POC Demo
 
 Runs two scenarios to demonstrate the agentic routing logic:
 
-  Scenario A: HIGH_RISK   — full pipeline, high-risk result, Stage 4 systems alarm
-  Scenario B: EARLY_EXIT  — pipeline terminates at Stage 2 (no HLA binders detected)
+  Scenario A: HIGH_RISK        — full pipeline, strong immune response, high-risk result
+  Scenario B: LOW_IMMUNOGENIC  — no HLA binding, but Stage 4 catches RAS/MAPK disruption
 
 Run:
     python demo.py
@@ -37,7 +37,7 @@ SCENARIOS: list[PipelineInput] = [
         hla_profile=["HLA-A*02:01", "HLA-B*07:02", "HLA-C*07:02", "HLA-DRB1*01:01", "HLA-DQB1*05:01"],
     ),
     PipelineInput(
-        patient_id="EARLY_EXIT",
+        patient_id="LOW_IMMUNOGENIC",
         sequence=(
             "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSY RKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRT"
             "GEGFLCVFAINNTKSFEDIHHQRQEIKRVKDSEDVPMVLVGNKCDLPARTVETRQAQDLARSYGIPYIETSAKTR"
@@ -67,7 +67,7 @@ SCENARIOS: list[PipelineInput] = [
 
 SCENARIO_LABELS = {
     "HIGH_RISK":       "Scenario A — Immune Rejection Risk (Full Pipeline)",
-    "EARLY_EXIT":      "Scenario B — Early Exit at Stage 2 (No HLA Binders)",
+    "LOW_IMMUNOGENIC":  "Scenario B — Low Immunogenic Risk (Stage 4 catches RAS/MAPK disruption)",
     "SYSTEMS_FAILURE": "Scenario C — Cellular Disruption (Immune System Tolerates, Cell Does Not)",
     "ALL_CLEAR":       "Scenario D — All Clear (Full Pipeline, Safe Result)",
 }
@@ -157,8 +157,6 @@ def print_risk_vector(rv: RiskVector) -> None:
     console.print(
         f"\n  Recommendation: {_recommendation_badge(rv.recommendation)}"
     )
-    if rv.early_exit_stage:
-        console.print(f"  [dim]Early exit after Stage {rv.early_exit_stage}[/dim]")
     console.print(f"\n  [dim]{rv.summary}[/dim]")
 
 
@@ -202,12 +200,12 @@ def run_scenario(pipeline, inp: PipelineInput) -> None:
 
             elif node_name == "stage2":
                 h = updates["hla_binding"]
-                status = f"Class I top %Rank={h.top_class_i_rank:.2f}  Class II top %Rank={h.top_class_ii_rank:.2f}"
-                if h.early_exit:
-                    status += "  [green]→ Early exit: both gates pass[/green]"
-                else:
-                    binders = len(h.class_i_binders) + len(h.class_ii_binders)
-                    status += f"  [red]→ {binders} binder(s) detected, proceeding[/red]"
+                binders = len([b for b in h.class_i_binders if b.strength != "none"]) + len([b for b in h.class_ii_binders if b.strength != "none"])
+                status = (
+                    f"Class I top %Rank={h.top_class_i_rank:.2f}  "
+                    f"Class II top %Rank={h.top_class_ii_rank:.2f}  "
+                    f"[{'red' if binders else 'green'}]→ {binders} significant binder(s)[/{'red' if binders else 'green'}]"
+                )
                 print_stage_header("Stage 2 — HLA Presentation (NetChop + NetMHCpan)", status)
 
             elif node_name == "stage3_tcr":
@@ -222,7 +220,7 @@ def run_scenario(pipeline, inp: PipelineInput) -> None:
 
             elif node_name == "stage3_join":
                 r = updates["reactivity"]
-                flag = "[red]HIGH RISK FLAG SET — early exit triggered[/red]" if r.high_risk_flag else "[green]within tolerance[/green]"
+                flag = "[red]HIGH RISK FLAG SET[/red]" if r.high_risk_flag else "[green]within tolerance[/green]"
                 print_stage_header("Stage 3 — Reactivity Join", flag)
 
             elif node_name == "stage4":

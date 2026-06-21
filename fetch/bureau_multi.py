@@ -1,25 +1,12 @@
 """
-Multi-Agent Bureau — runs all 7 specialist agents + orchestrator + test client
-in a single process for local end-to-end testing.
+Multi-Agent Bureau — runs all 7 specialist agents + orchestrator in a single
+process for local testing (no Agentverse relay, direct intra-process routing).
 
-Topology:
-    client → orchestrator → stage1 → stage2 → [stage3_tcr, stage3_bcell]
-                                             → stage3_join → stage4 → report
-                                                                     ↓
-                                                              → client
-
-Each specialist agent is an independent uAgent with its own address.
-The orchestrator is wired with all addresses at construction time — no
-hardcoded strings, no env vars needed for local testing.
+For Agentverse demos where each agent is individually reachable, run them in
+separate terminals instead — see SETUP.md > Registering Agents on Agentverse.
 
 Run:
     uv run python -m fetch.bureau_multi
-
-To register on Agentverse, set AGENT_MAILBOX_KEY before running.
-Individual agents can also be run standalone for separate Agentverse registration:
-    uv run python -m fetch.multi.stage1_agent
-    uv run python -m fetch.multi.report_agent
-    etc.
 """
 
 from uagents import Bureau

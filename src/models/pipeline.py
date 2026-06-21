@@ -59,11 +59,6 @@ class HLABindingResult(BaseModel):
     class_ii_binders: list[PeptideBinding]
     top_class_i_rank: float
     top_class_ii_rank: float
-    # Gate: exit early ONLY if BOTH Class I (>2.0) AND Class II (>10.0) show no binding
-    early_exit: bool = Field(
-        ...,
-        description="True when both HLA class thresholds indicate negligible binding risk",
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +85,6 @@ class ReactivityResult(BaseModel):
     tcr: TCRResult
     bcell: BCellResult
     max_tcr_probability: float
-    # High-risk flag triggers early exit before Stage 4
     high_risk_flag: bool
 
 
@@ -135,7 +129,6 @@ class RiskVector(BaseModel):
     systems_risk: float = Field(..., ge=0.0, le=1.0)
     overall_risk: float = Field(..., ge=0.0, le=1.0)
     recommendation: Literal["safe", "caution", "high_risk"]
-    early_exit_stage: Optional[int] = None
     summary: str
 
 

@@ -94,7 +94,8 @@ Each specialist agent has its own seed, port, and mailbox key env var. Seeds and
 
 | Variable | Default | Description |
 |---|---|---|
-| `AGENTVERSE_MAILBOX` | — | Set to any non-empty value (e.g. `1`) to connect all agents to Agentverse's relay on startup. Agents authenticate via their cryptographic identity — no separate mailbox key required. |
+| `ORCHESTRATOR_MAILBOX` | — | Set to `1` to connect only the orchestrator to Agentverse's relay. Use this when running the full bureau — all intra-pipeline hops stay local. |
+| `AGENTVERSE_MAILBOX` | — | Set to `1` to connect the current agent to Agentverse's relay. Use this when running a specialist agent standalone for individual-stage demos. |
 | `AGENTVERSE_KEY` | — | Agentverse API key. Required only for `register_agents.py`. Get it from your account settings at agentverse.ai. |
 
 **Specialist agent addresses — required when running the orchestrator standalone**
@@ -303,15 +304,33 @@ On startup the orchestrator logs every specialist agent's address. Copy these �
 
 Use `fetch/demo_client.py` in a second terminal to send requests while the bureau is running.
 
+### Starting all agents
+
+Run each agent in its own terminal with `AGENTVERSE_MAILBOX=1`. The pipeline runs through Agentverse's relay — each inter-agent hop is ~1-2 seconds, so a full pipeline run takes ~15-20 seconds.
+
+```bash
+# One terminal per agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.orchestrator
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage1_agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage2_agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage3_tcr_agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage3_bcell_agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage4_agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.report_agent
+```
+
+Once all 7 are running, re-run registration so Agentverse stores the relay URLs instead of the original localhost endpoints:
+
+```bash
+export AGENTVERSE_KEY=<your key>
+uv run python register_agents.py
+```
+
 ### Full pipeline via the orchestrator
 
 ```bash
-# Terminal 1 — agents online
-export AGENTVERSE_MAILBOX=1          # omit for local-only
-uv run python -m fetch.bureau_multi
-
-# Terminal 2 — send a full pipeline request
-export ORCHESTRATOR_AGENT_ADDRESS=agent1q...   # from Terminal 1 startup log
+# No AGENTVERSE_MAILBOX on the client — routes via Almanac, not Agentverse push-delivery
+export ORCHESTRATOR_AGENT_ADDRESS=agent1q...   # from orchestrator startup log
 uv run python -m fetch.demo_client --target orchestrator --scenario high_risk
 ```
 
@@ -319,25 +338,18 @@ Available scenarios: `high_risk`, `early_exit`, `systems_failure`, `all_clear`.
 
 ### Calling an individual stage directly
 
-Any stage can be called in isolation — the demo client provides realistic mock data for upstream inputs automatically.
+Any stage can be called in isolation. The demo client provides realistic mock upstream data automatically (e.g. calling Stage 2 generates a mock Stage 1 structural result as its input).
 
 ```bash
-# HLA binding only (no structural prediction needed)
-export STAGE2_AGENT_ADDRESS=agent1q...
+export STAGE2_AGENT_ADDRESS=agent1q...   # from stage2 startup log
 uv run python -m fetch.demo_client --target stage2 --scenario high_risk
-
-# T-cell reactivity only
-export STAGE3_TCR_AGENT_ADDRESS=agent1q...
-uv run python -m fetch.demo_client --target stage3-tcr
-
-# Systems dynamics only
-export STAGE4_AGENT_ADDRESS=agent1q...
-uv run python -m fetch.demo_client --target stage4
 ```
 
-All targets: `orchestrator`, `stage1`, `stage2`, `stage3-tcr`, `stage3-bcell`, `stage4`.
+Works for any target: `stage1`, `stage2`, `stage3-tcr`, `stage3-bcell`, `stage4`.
 
-Each specialist agent processes the message identically whether it came from the orchestrator or a direct client call — this is the Agentverse composability model.
+Each specialist agent processes the message identically whether the request came from the orchestrator or a direct client call — this is the Agentverse composability model.
+
+> **Note on `AGENTVERSE_MAILBOX` and the demo client:** do not set `AGENTVERSE_MAILBOX=1` when running `demo_client`. That flag causes the client to route through Agentverse's push-delivery system, which tries to connect to the registered localhost endpoint and fails. Without it, the client resolves addresses via the Almanac and routes through the relay correctly.
 
 ---
 
@@ -361,7 +373,7 @@ The agent prints its deterministic address on startup, registers with the Almana
 
 Each specialist agent and the orchestrator are registered independently on Agentverse. Any agent on the network can call individual stages directly or call the orchestrator for a full pipeline run.
 
-**Step 1 — register all agents**
+#### Step 1 — initial registration
 
 Get your Agentverse API key from [agentverse.ai](https://agentverse.ai) (account settings), then run:
 
@@ -372,16 +384,29 @@ uv run python register_agents.py
 
 This registers all 7 agents in one shot using the seeds already in your agent code, so the Agentverse-registered addresses are identical to the addresses your running agents use.
 
-**Step 2 — bring agents online**
+#### Step 2 — bring agents online
+
+Start each agent in its own terminal with `AGENTVERSE_MAILBOX=1`. When agents start with the mailbox flag, the uagents runtime updates the Almanac with the Agentverse relay URL as their endpoint (instead of localhost).
 
 ```bash
-export AGENTVERSE_MAILBOX=1
-uv run python -m fetch.bureau_multi
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.orchestrator
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage1_agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage2_agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage3_tcr_agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage3_bcell_agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.stage4_agent
+export AGENTVERSE_MAILBOX=1 && uv run python -m fetch.multi.report_agent
 ```
 
-Agents connect to Agentverse's relay using their cryptographic identity (derived from seed — no separate mailbox key needed). Each prints `Agentverse mailbox: enabled` on startup and its address. Once running they are discoverable and reachable from anywhere on the Agentverse network.
+#### Step 3 — re-register with relay endpoints
 
-**Step 3 — send requests**
+Once all agents are running, re-run registration so Agentverse stores the relay URLs instead of the localhost endpoints from Step 1:
+
+```bash
+uv run python register_agents.py
+```
+
+#### Step 4 — send requests
 
 See the [Interacting with the Multi-Agent Bureau](#interacting-with-the-multi-agent-bureau) section above for how to call the full pipeline or individual stages via `fetch/demo_client.py`.
 
@@ -416,7 +441,7 @@ PipelineResponse(
 
 ## Project Structure
 
-```
+```text
 src/
   models/pipeline.py         All Pydantic schemas (stage I/O + PipelineState)
   tools/

@@ -27,6 +27,6 @@ class PipelineResponse(Model):
     immunogenic_risk: float
     reactivity_risk: float
     systems_risk: float
-    early_exit_stage: Optional[int] = None
     summary: str
+    clinical_report_json: Optional[str] = None
     error: Optional[str] = None

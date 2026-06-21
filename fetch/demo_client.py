@@ -5,7 +5,7 @@ individual specialist agent directly.
 Usage:
     # Full pipeline via orchestrator
     uv run python -m fetch.demo_client --target orchestrator
-    uv run python -m fetch.demo_client --target orchestrator --scenario early_exit
+    uv run python -m fetch.demo_client --target orchestrator --scenario low_immunogenic
 
     # Individual stages (showcases direct Agentverse composability)
     uv run python -m fetch.demo_client --target stage1
@@ -14,7 +14,7 @@ Usage:
     uv run python -m fetch.demo_client --target stage3-bcell
     uv run python -m fetch.demo_client --target stage4
 
-Required env vars (printed by bureau_multi on startup):
+Required env vars (printed by each agent on startup):
     ORCHESTRATOR_AGENT_ADDRESS
     STAGE1_AGENT_ADDRESS
     STAGE2_AGENT_ADDRESS
@@ -22,7 +22,9 @@ Required env vars (printed by bureau_multi on startup):
     STAGE3_BCELL_AGENT_ADDRESS
     STAGE4_AGENT_ADDRESS
 
-Set AGENTVERSE_MAILBOX=1 to route through Agentverse instead of local delivery.
+Do NOT set AGENTVERSE_MAILBOX=1 on the client. The client resolves agent
+addresses via the Almanac and routes through the relay without the flag.
+Setting it causes Agentverse push-delivery to localhost which always fails.
 """
 
 import argparse
@@ -68,8 +70,8 @@ _SCENARIOS: dict[str, PipelineInput] = {
         edit_positions=[47, 48, 49, 50, 51, 52, 53],
         hla_profile=["HLA-A*02:01", "HLA-B*07:02", "HLA-C*07:02", "HLA-DRB1*01:01"],
     ),
-    "early_exit": PipelineInput(
-        patient_id="EARLY_EXIT",
+    "low_immunogenic": PipelineInput(
+        patient_id="LOW_IMMUNOGENIC",
         sequence=(
             "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSY RKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRT"
             "GEGFLCVFAINNTKSFEDIHHQRQEIKRVKDSEDVPMVLVGNKCDLPARTVETRQAQDLARSYGIPYIETSAKTR"
@@ -174,13 +176,13 @@ def _build_request(target: str, inp: PipelineInput, session_id: str):
 # ---------------------------------------------------------------------------
 
 def _show_pipeline_response(msg: PipelineResponse) -> None:
+    from src.models.pipeline import ClinicalReport
     colour = {"safe": "green", "caution": "yellow", "high_risk": "red", "error": "red"}.get(
         msg.recommendation, "white"
     )
-    exit_note = f"  Early exit at stage {msg.early_exit_stage}" if msg.early_exit_stage else ""
     table = Table(show_header=False, box=None, padding=(0, 2))
     table.add_row("Recommendation", f"[bold {colour}]{msg.recommendation.upper()}[/]")
-    table.add_row("Overall risk",   f"{msg.overall_risk:.3f}{exit_note}")
+    table.add_row("Overall risk",   f"{msg.overall_risk:.3f}")
     table.add_row("Structural",     f"{msg.structural_risk:.3f}")
     table.add_row("Immunogenic",    f"{msg.immunogenic_risk:.3f}")
     table.add_row("Reactivity",     f"{msg.reactivity_risk:.3f}")
@@ -188,6 +190,25 @@ def _show_pipeline_response(msg: PipelineResponse) -> None:
     console.print(Panel(table, title=f"[bold]Pipeline result — {msg.patient_id}[/]", border_style=colour))
     if msg.summary:
         console.print(f"[dim]{msg.summary}[/dim]\n")
+
+    if msg.clinical_report_json:
+        report = ClinicalReport.model_validate_json(msg.clinical_report_json)
+        console.print(
+            Panel(
+                f"[bold]{report.headline}[/bold]",
+                title="[cyan]Clinical Report[/cyan]",
+                border_style="cyan",
+            )
+        )
+        console.print("\n  [bold]Stage Findings[/bold]")
+        for finding in report.stage_findings:
+            console.print(f"  [dim]•[/dim] {finding}\n")
+        console.print(f"  [bold]Risk Rationale[/bold]\n  {report.risk_rationale}\n")
+        if report.mitigation_suggestions:
+            console.print("  [bold]Mitigation Suggestions[/bold]")
+            for i, sug in enumerate(report.mitigation_suggestions, 1):
+                console.print(f"  [yellow]{i}.[/yellow] {sug}\n")
+        console.print(f"  [dim]Confidence note: {report.confidence_note}[/dim]\n")
 
 
 def _show_stage1(msg: Stage1Response) -> None:
@@ -205,9 +226,9 @@ def _show_stage1(msg: Stage1Response) -> None:
 def _show_stage2(msg: Stage2Response) -> None:
     from src.models.pipeline import HLABindingResult
     r = HLABindingResult.model_validate_json(msg.hla_binding_json)
-    colour = "green" if r.early_exit else "red"
+    has_binders = r.top_class_i_rank < 2.0 or r.top_class_ii_rank < 10.0
+    colour = "red" if has_binders else "green"
     table = Table(show_header=False, box=None, padding=(0, 2))
-    table.add_row("Early exit", f"[bold {colour}]{r.early_exit}[/]")
     table.add_row("Top Class I %Rank",  f"{r.top_class_i_rank:.2f}")
     table.add_row("Top Class II %Rank", f"{r.top_class_ii_rank:.2f}")
     if r.class_i_binders:
@@ -266,7 +287,7 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--scenario",
-        choices=list(_SCENARIOS),
+        choices=["high_risk", "low_immunogenic", "systems_failure", "all_clear"],
         default="high_risk",
         help="Demo scenario to use (default: high_risk)",
     )

@@ -26,12 +26,6 @@ def build_pipeline_context(state: "PipelineState") -> str:
         f"Overall risk score: {rv.overall_risk:.3f}  (0 = fully safe, 1 = maximum risk)",
     ]
 
-    if rv.early_exit_stage:
-        lines.append(
-            f"Pipeline terminated early at Stage {rv.early_exit_stage} "
-            f"— downstream stages were not computed."
-        )
-
     lines += [
         "",
         "=== RISK DIMENSIONS ===",
@@ -58,7 +52,6 @@ def build_pipeline_context(state: "PipelineState") -> str:
             "=== STAGE 2: HLA ANTIGEN PRESENTATION (NetChop-3.1 + NetMHCpan-4.1) ===",
             f"  Top Class I  %Rank: {h.top_class_i_rank:.2f}%  (strong binder ≤0.5%, weak ≤2.0%)",
             f"  Top Class II %Rank: {h.top_class_ii_rank:.2f}%  (strong binder ≤2.0%, weak ≤10.0%)",
-            f"  Early exit triggered  : {h.early_exit}",
         ]
         if h.class_i_binders:
             t = h.class_i_binders[0]

@@ -2,28 +2,25 @@
 LangGraph StateGraph definition.
 
 Graph topology:
-                        START
-                          │
-                       stage1
-                          │
-              ┌─── low confidence ───┐
-              │                      │
-       increment_retry            stage2
-              │                      │
-           stage1         ┌── early exit ──┐
-                          │                │
-                   [stage3_tcr]      aggregate ◄── END (early)
-                   [stage3_bcell]
-                          │
-                    stage3_join
-                          │
-               ┌── high risk ───┐
-               │                │
-            stage4         aggregate ◄── END (early)
-               │
-           aggregate
-               │
-              END
+                    START
+                      │
+                   stage1
+                      │
+          ┌─── low confidence ───┐
+          │                      │
+   increment_retry            stage2
+          │                      │
+       stage1            [stage3_tcr, stage3_bcell]  ← always both
+                                  │
+                            stage3_join
+                                  │
+                               stage4        ← always runs
+                                  │
+                              aggregate
+                                  │
+                               report
+                                  │
+                                 END
 """
 
 from langgraph.graph import StateGraph, START, END
@@ -38,7 +35,6 @@ from src.agents.nodes import (
     stage3_tcr_node,
     stage3_bcell_node,
     stage3_join_node,
-    route_after_stage3,
     stage4_node,
     aggregate_node,
     report_node,
@@ -68,30 +64,24 @@ def build_graph():
         route_after_stage1,
         {"increment_retry": "increment_retry", "stage2": "stage2"},
     )
-    graph.add_edge("increment_retry", "stage1")   # cyclic: retry once
+    graph.add_edge("increment_retry", "stage1")
 
-    # --- Stage 2 → early exit or parallel Stage 3 ---
+    # --- Stage 2 → always fan out to parallel Stage 3 ---
     graph.add_conditional_edges(
         "stage2",
         route_after_stage2,
-        ["aggregate", "stage3_tcr", "stage3_bcell"],  # possible targets for Send
+        ["stage3_tcr", "stage3_bcell"],
     )
 
     # --- Stage 3 parallel branches → join ---
     graph.add_edge("stage3_tcr", "stage3_join")
     graph.add_edge("stage3_bcell", "stage3_join")
 
-    # --- Stage 3 join → early exit or Stage 4 ---
-    graph.add_conditional_edges(
-        "stage3_join",
-        route_after_stage3,
-        {"aggregate": "aggregate", "stage4": "stage4"},
-    )
+    # --- Stage 3 join → always Stage 4 ---
+    graph.add_edge("stage3_join", "stage4")
 
-    # --- Stage 4 → aggregate ---
+    # --- Stage 4 → aggregate → report → END ---
     graph.add_edge("stage4", "aggregate")
-
-    # --- Aggregate → report → END ---
     graph.add_edge("aggregate", "report")
     graph.add_edge("report", END)
 

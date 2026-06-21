@@ -265,21 +265,16 @@ class IEDBHLABindingTool(HLABindingTool):
         if not class_ii_alleles:
             top_ii = 0.0  # conservative: no Class II data → gate does not clear
 
-        early_exit = top_i > 2.0 and top_ii > 10.0
-
         logger.info(
             f"[{inp.patient_id}] Class I top %Rank={top_i:.3f} "
-            f"Class II top %Rank={top_ii:.3f} early_exit={early_exit}"
+            f"Class II top %Rank={top_ii:.3f}"
         )
 
-        # Include all results in class_i_binders (not just strong/weak) so that
-        # Stage 3 always has a top peptide to evaluate if early_exit is False.
-        # Stage 3 TCR scoring is independent of HLA binding strength — a peptide
-        # that barely binds HLA can still be recognised by a TCR if presented.
+        # Include all results in class_i_binders so Stage 3 always has a top
+        # peptide to evaluate. TCR scoring is independent of HLA binding strength.
         return HLABindingResult(
             class_i_binders=all_i[:10],
             class_ii_binders=all_ii[:10],
             top_class_i_rank=top_i,
             top_class_ii_rank=top_ii,
-            early_exit=early_exit,
         )

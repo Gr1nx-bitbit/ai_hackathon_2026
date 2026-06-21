@@ -11,7 +11,6 @@ Routing functions (used in add_conditional_edges) are also defined here.
 
 from __future__ import annotations
 
-from typing import Union
 from langgraph.types import Send
 
 from src.models.pipeline import PipelineState, ReactivityResult
@@ -52,9 +51,6 @@ def route_after_stage1(state: PipelineState) -> str:
     retry_count = state.get("retry_count", 0)
 
     if s.confidence == "low" and retry_count == 0:
-        # Return to stage1 with an incremented retry counter
-        # We signal this by routing back; the retry_count update happens via
-        # a dedicated increment node to keep stage1_node stateless.
         return "increment_retry"
 
     return "stage2"
@@ -74,15 +70,8 @@ def stage2_node(state: PipelineState) -> dict:
     return {"hla_binding": result}
 
 
-def route_after_stage2(state: PipelineState) -> Union[str, list[Send]]:
-    """
-    Early exit if both HLA class thresholds indicate negligible binding risk.
-    Otherwise fan out to parallel Stage 3 branches via Send.
-    """
-    if state["hla_binding"].early_exit:
-        return "aggregate"
-
-    # Parallel dispatch: both branches receive the full current state
+def route_after_stage2(state: PipelineState) -> list:
+    """Always fan out to both Stage 3 branches in parallel."""
     return [
         Send("stage3_tcr", state),
         Send("stage3_bcell", state),
@@ -104,33 +93,17 @@ def stage3_bcell_node(state: PipelineState) -> dict:
 
 
 def stage3_join_node(state: PipelineState) -> dict:
-    """
-    Joins TCR and B-cell branch results into a single ReactivityResult.
-    Sets high_risk_flag if either branch signals a significant threat.
-    """
+    """Joins TCR and B-cell branch results into a single ReactivityResult."""
     tcr = state["tcr_result"]
     bcell = state["bcell_result"]
-
-    high_risk = tcr.above_threshold or bcell.epitope_detected
 
     reactivity = ReactivityResult(
         tcr=tcr,
         bcell=bcell,
         max_tcr_probability=tcr.binding_probability,
-        high_risk_flag=high_risk,
+        high_risk_flag=tcr.above_threshold or bcell.epitope_detected,
     )
     return {"reactivity": reactivity}
-
-
-def route_after_stage3(state: PipelineState) -> str:
-    """
-    High reactivity risk exits early before the more expensive Stage 4 simulation.
-    In a real pipeline this is a deliberate cost-saving gate: if cells will be
-    destroyed by the immune system, systems stability is moot.
-    """
-    if state["reactivity"].high_risk_flag:
-        return "aggregate"
-    return "stage4"
 
 
 # ---------------------------------------------------------------------------
