@@ -194,13 +194,14 @@ def render_stage2(updates: dict) -> None:
     cols[0].markdown("**Stage 2 — HLA Antigen Presentation**")
     cols[1].metric("Class I %Rank", f"{h.top_class_i_rank:.2f}%")
     cols[2].metric("Class II %Rank", f"{h.top_class_ii_rank:.2f}%")
-    if h.early_exit:
-        cols[3].success("Early exit — no significant binders detected")
+    has_binders = h.top_class_i_rank < 2.0 or h.top_class_ii_rank < 10.0
+    if not has_binders:
+        cols[3].success("No significant binders detected")
     else:
         n = len(h.class_i_binders) + len(h.class_ii_binders)
         cols[3].warning(f"{n} binder(s) detected — proceeding to Stage 3")
 
-    if h.class_i_binders and not h.early_exit:
+    if h.class_i_binders and has_binders:
         with st.expander("Top Class I binders"):
             rows = [(b.peptide, b.hla_allele, f"{b.percent_rank:.2f}%", f"{b.ic50_nm:.0f} nM", b.strength)
                     for b in h.class_i_binders[:5]]
@@ -317,8 +318,6 @@ def render_sequence_view(inp: PipelineInput, hla=None) -> None:
     caption = f"Sequence length: {len(seq)} aa  ·  Edit positions: {inp.edit_positions}"
     if strong_pos or weak_pos:
         caption += "  ·  Peptide positions mapped from Stage 2 binders"
-    elif hla is not None and hla.early_exit:
-        caption += "  ·  Stage 2 early exit — both HLA class thresholds clear, no binders to map"
     elif hla is not None and not (hla.class_i_binders or hla.class_ii_binders):
         caption += "  ·  No HLA binders detected"
     st.caption(caption)
@@ -428,8 +427,6 @@ def render_risk_dashboard(rv: RiskVector) -> None:
             st.metric(label=f"{name}  ·  {weight}", value=f"{score:.3f}")
             st.markdown(_risk_bar(score), unsafe_allow_html=True)
 
-    if rv.early_exit_stage:
-        st.info(f"Pipeline exited early after Stage {rv.early_exit_stage} — downstream stages not computed.")
 
 
 # ---------------------------------------------------------------------------
